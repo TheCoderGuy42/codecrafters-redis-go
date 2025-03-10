@@ -6,19 +6,15 @@ import (
 	"os"
 	"strconv"
 	"strings"
-	"sync"
-	"time"
 )
 
-var counter = struct {
-	sync.RWMutex
-	m map[string]string
-}{m: make(map[string]string)}
+var counter = NewSafeMap()
+
+// var config_map = NewSafeMap()
 
 func main() {
 	// You can use print statements as follows for debugging, they'll be visible when running tests.
 	fmt.Println("Logs from your program will appear here!")
-
 	ln, err := net.Listen("tcp", "0.0.0.0:6379")
 	if err != nil {
 		fmt.Println("Failed to bind to port 6379")
@@ -37,6 +33,7 @@ func main() {
 }
 
 func handleReq(conn net.Conn) {
+	defer conn.Close()
 	for {
 		buf := make([]byte, 2048)
 		n, err := conn.Read(buf)
@@ -47,63 +44,25 @@ func handleReq(conn net.Conn) {
 		}
 
 		buffer := string(buf[:n])
+		pos := strings.Index(buffer, "\r\n") // Skips the *1, can check it if it matters
+		cmd := nextString(buffer, &pos)
 
-		pos := strings.Index(buffer, "\r\n")                  // Skips the *1, can check it if it matters
-		pos += 3                                              // Skip past \r\n$
-		lenEnd := strings.Index(buffer[pos:], "\r\n")         // Gets the index of length of next word
-		length, err := strconv.Atoi(buffer[pos : pos+lenEnd]) // Gets the index of length of next word
-		if err != nil {
-			fmt.Println("Error accepting connection: ", err.Error())
-		}
-
-		pos += lenEnd + 2 //Skip past \r\n
-		cmd := buffer[pos : pos+length]
-		pos += length // Skip past the cmd
-
-		if cmd == "PING" {
+		switch cmd {
+		case "PING":
 			_, err = conn.Write([]byte("+PONG\r\n"))
-			if err != nil {
-				fmt.Println("Error accepting connection: ", err.Error())
-				os.Exit(1)
-			}
-		} else if cmd == "ECHO" {
-			pos += 2 // Skip past the cmd
-			_, err = conn.Write([]byte(buffer[pos:]))
-			handleErr(err)
-
-		} else if cmd == "SET" {
-
-			key := nextString(buffer, &pos)
-
-			value := nextString(buffer, &pos)
-
-			if pos < len(buffer)-2 { // accounting for the \r\n
-				nextString(buffer, &pos) // getting rid of px
-				str_time := nextString(buffer, &pos)
-				timer, _ := strconv.Atoi(str_time)
-				go expiry(key, timer)
-			}
-			counter.Lock()
-			counter.m[key] = value
-			counter.Unlock()
-
-			_, err = conn.Write([]byte("+OK\r\n"))
-			handleErr(err)
-		} else if cmd == "GET" {
-			key := nextString(buffer, &pos)
-			counter.RLock()
-			value, exist := counter.m[key]
-			counter.RUnlock()
-			if !exist {
-				_, err = conn.Write([]byte("$-1\r\n"))
-				handleErr(err)
-			} else {
-				_, err = conn.Write([]byte("$" + strconv.Itoa(len(value)) + "\r\n" + value + "\r\n"))
-				handleErr(err)
-			}
-		} else {
+		case "ECHO":
+			handleECHO(conn, buffer, &pos)
+		case "SET":
+			handleSET(conn, buffer, &pos)
+		case "GET":
+			handleGET(conn, buffer, &pos)
+		case "CONFIG":
+			handleCONFIG(conn, buffer, &pos)
+		default:
 			fmt.Println("cmd not found")
 		}
+
+		handleErr(err)
 	}
 }
 
@@ -131,36 +90,11 @@ func nextString(buffer string, pos *int) string {
 	return data
 }
 
-func handleErr(err error) {
-	if err != nil {
-		fmt.Println("Error accepting connection: ", err.Error())
-	}
+func stringToBulkString(value string) string {
+	// ret := ""
+	// for i := 0; i < len(values); i++ {
+	// 	ret += "$" + strconv.Itoa(len(values[i])) + "\r\n" + values[i] + "\r\n"
+	// }
+	// ret += "\r\n"
+	return "$" + strconv.Itoa(len(value)) + "\r\n" + value + "\r\n"
 }
-
-func expiry(key string, timer int) {
-	time.Sleep(time.Duration(timer) * time.Millisecond)
-	delete(counter.m, key)
-}
-
-// func parse(buf string) string {
-
-// 	pos := strings.Index(buf, "\r\n")
-// 	// Can check for the *1 and such if it matters
-// 	pos += 3                                           // Skip past \r\n$
-// 	lenEnd := strings.Index(buf[pos:], "\r\n")         // Gets the index of length of next word
-// 	length, err := strconv.Atoi(buf[pos : pos+lenEnd]) //Gets the index of length of next word
-// 	if err != nil {
-// 		fmt.Println("Error accepting connection: ", err.Error())
-// 	}
-
-// 	pos += lenEnd + 2 //Skip past \r\n
-// 	data := buf[pos : pos+length]
-// 	if data == "PING" {
-// 		_, err = conn.Write([]byte("+PONG\r\n"))
-// 		if err != nil {
-// 			fmt.Println("Error accepting connection: ", err.Error())
-// 			os.Exit(1)
-// 		}
-// 	}
-// 	return data
-// }
