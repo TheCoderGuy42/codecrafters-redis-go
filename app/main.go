@@ -7,6 +7,7 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"time"
 )
 
 var counter = struct {
@@ -76,6 +77,12 @@ func handleReq(conn net.Conn) {
 
 			value := nextString(buffer, &pos)
 
+			if pos < len(buffer)-2 { // accounting for the \r\n
+				nextString(buffer, &pos) // getting rid of px
+				str_time := nextString(buffer, &pos)
+				timer, _ := strconv.Atoi(str_time)
+				go expiry(key, timer)
+			}
 			counter.Lock()
 			counter.m[key] = value
 			counter.Unlock()
@@ -85,10 +92,15 @@ func handleReq(conn net.Conn) {
 		} else if cmd == "GET" {
 			key := nextString(buffer, &pos)
 			counter.RLock()
-			value := counter.m[key]
+			value, exist := counter.m[key]
 			counter.RUnlock()
-			_, err = conn.Write([]byte("$" + strconv.Itoa(len(value)) + "\r\n" + value + "\r\n"))
-			handleErr(err)
+			if !exist {
+				_, err = conn.Write([]byte("$-1\r\n"))
+				handleErr(err)
+			} else {
+				_, err = conn.Write([]byte("$" + strconv.Itoa(len(value)) + "\r\n" + value + "\r\n"))
+				handleErr(err)
+			}
 		} else {
 			fmt.Println("cmd not found")
 		}
@@ -123,6 +135,11 @@ func handleErr(err error) {
 	if err != nil {
 		fmt.Println("Error accepting connection: ", err.Error())
 	}
+}
+
+func expiry(key string, timer int) {
+	time.Sleep(time.Duration(timer) * time.Millisecond)
+	delete(counter.m, key)
 }
 
 // func parse(buf string) string {
