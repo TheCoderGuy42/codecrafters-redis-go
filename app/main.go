@@ -20,13 +20,17 @@ func main() {
 
 	}
 
-	conn, err := ln.Accept()
-
-	if err != nil {
-		fmt.Println("Error accepting connection: ", err.Error())
-		os.Exit(1)
-
+	for {
+		conn, err := ln.Accept()
+		if err != nil {
+			fmt.Println("Error accepting connection: ", err.Error())
+			os.Exit(1)
+		}
+		go handle_req(conn)
 	}
+}
+
+func handle_req(conn net.Conn) {
 	for {
 		buf := make([]byte, 2048)
 		n, err := conn.Read(buf)
