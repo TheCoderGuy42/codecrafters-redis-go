@@ -36,12 +36,12 @@ func handle_req(conn net.Conn) {
 		n, err := conn.Read(buf)
 		if err != nil {
 			fmt.Println("Error accepting connection: ", err.Error())
-			os.Exit(1)
+			conn.Close()
+			return
 		}
 		msg := string(buf[:n])
 		println(strconv.Quote(msg))
 		_, err = conn.Write([]byte("+PONG\r\n"))
-
 		if err != nil {
 			fmt.Println("Error accepting connection: ", err.Error())
 			os.Exit(1)
