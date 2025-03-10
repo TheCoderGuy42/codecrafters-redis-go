@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"net"
 	"os"
+	"strconv"
 )
 
 func main() {
@@ -26,19 +27,20 @@ func main() {
 		os.Exit(1)
 
 	}
+	for {
+		buf := make([]byte, 2048)
+		n, err := conn.Read(buf)
+		if err != nil {
+			fmt.Println("Error accepting connection: ", err.Error())
+			os.Exit(1)
+		}
+		msg := string(buf[:n])
+		println(strconv.Quote(msg))
+		_, err = conn.Write([]byte("+PONG\r\n"))
 
-	// buf := make([]byte, 2048)
-	// n, err := conn.Read(buf)
-	if err != nil {
-		fmt.Println("Error accepting connection: ", err.Error())
-		os.Exit(1)
+		if err != nil {
+			fmt.Println("Error accepting connection: ", err.Error())
+			os.Exit(1)
+		}
 	}
-	// msg = string(buf[:n])
-	_, err = conn.Write([]byte("+PONG\r\n"))
-
-	if err != nil {
-		fmt.Println("Error accepting connection: ", err.Error())
-		os.Exit(1)
-	}
-
 }
