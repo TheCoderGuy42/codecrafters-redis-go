@@ -28,23 +28,21 @@ func (s *SafeMap) Set(key string, value string, expiry time.Time) {
 }
 
 func (s *SafeMap) Get(key string) (string, bool) {
-	var ret string
-	s.mu.Lock()
-	defer s.mu.Unlock()
+	s.mu.RLock()
 	entry, ok := s.m[key]
+	s.mu.RUnlock()
 	if !ok {
-		ret = "$-1\r\n"
-		ok = false
-	} else if !time.Time.IsZero(entry.time) && entry.time.Before(time.Now()) {
-		delete(s.m, key)
-		ret = "$-1\r\n"
-		ok = false
-	} else {
-		ret = entry.value
-		ok = true
+		return "", false
 	}
 
-	return ret, ok
+	if !time.Time.IsZero(entry.time) && entry.time.Before(time.Now()) {
+		s.mu.Lock()
+		delete(s.m, key)
+		s.mu.Unlock()
+		return "", false
+
+	}
+	return entry.value, true
 
 }
 

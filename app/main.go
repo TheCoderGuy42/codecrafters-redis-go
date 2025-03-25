@@ -2,9 +2,10 @@ package main
 
 import (
 	"fmt"
+	"io"
+	"log"
 	"net"
 	"os"
-	"strconv"
 	"strings"
 )
 
@@ -34,67 +35,42 @@ func main() {
 
 func handleReq(conn net.Conn) {
 	defer conn.Close()
+
+	parser := NewRedisParser(conn)
+
 	for {
-		buf := make([]byte, 2048)
-		n, err := conn.Read(buf)
+		// Constraits: arguments cannot be longer than 2048 bytes
+		cmdArgs, err := parser.ReadCommand()
 		if err != nil {
-			fmt.Println("Error accepting connection: ", err.Error())
-			conn.Close()
+			if err != io.EOF {
+				log.Printf("Error reading command: %v", err)
+			}
 			return
 		}
 
-		buffer := string(buf[:n])
-		pos := strings.Index(buffer, "\r\n") // Skips the *1, can check it if it matters
-		cmd := nextString(buffer, &pos)
-
-		switch cmd {
-		case "PING":
-			_, err = conn.Write([]byte("+PONG\r\n"))
-		case "ECHO":
-			handleECHO(conn, buffer, &pos)
-		case "SET":
-			handleSET(conn, buffer, &pos)
-		case "GET":
-			handleGET(conn, buffer, &pos)
-		case "CONFIG":
-			handleCONFIG(conn, buffer, &pos)
-		default:
-			fmt.Println("cmd not found")
+		if len(cmdArgs) == 0 {
+			log.Printf("Empty command received")
+			continue
 		}
 
-		handleErr(err)
+		cmd := strings.ToUpper(cmdArgs[0])
+
+		var cmdErr error
+		handler, exists := commandRegistry[cmd]
+
+		if !exists {
+			log.Printf("Unknown command: %s", cmd)
+			_, cmdErr = conn.Write([]byte("-ERR unknown command\r\n"))
+			if cmdErr != nil {
+				log.Printf("Error handling command %s: %v", cmd, cmdErr)
+				return
+			}
+		}
+
+		err = handler(conn, cmdArgs[1:])
+		if err != nil {
+			log.Printf("Error handling command %s: %v", cmd, err)
+			return
+		}
 	}
-}
-
-func nextString(buffer string, pos *int) string {
-	*pos += 3 // Skip past \r\n$
-
-	lenEnd := strings.Index(buffer[*pos:], "\r\n")
-	if lenEnd == -1 {
-		return ""
-	}
-
-	length, err := strconv.Atoi(buffer[*pos : *pos+lenEnd])
-	if err != nil {
-		return ""
-	}
-
-	*pos += lenEnd + 2 // Skip past \r\n
-	if *pos+length > len(buffer) {
-		return ""
-	}
-
-	data := buffer[*pos : *pos+length]
-	*pos += length // Move position past the extracted string
-
-	return data
-}
-
-func stringToBulkString(value string) string {
-	// ret := ""
-	// for i := 0; i < len(values); i++ {
-	// 	ret += "$" + strconv.Itoa(len(values[i])) + "\r\n" + values[i] + "\r\n"
-	// }
-	// ret += "\r\n"
-	return "$" + strconv.Itoa(len(value)) + "\r\n" + value + "\r\n"
 }
