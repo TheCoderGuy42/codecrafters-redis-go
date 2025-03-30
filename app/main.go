@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"fmt"
 	"io"
 	"log"
@@ -116,6 +117,9 @@ func connectToMaster(masterHost string, masterPort string) {
 		fmt.Printf("Connected to master at %s ", address)
 
 		sendPING(conn)
+		var buf bytes.Buffer
+		io.Copy(&buf, conn)
+		fmt.Printf("%s", buf.String())
 		sendREPLCONF(conn, os.Args[2])
 
 		err = setUpReplication()
