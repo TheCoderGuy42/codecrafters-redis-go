@@ -35,6 +35,7 @@ func sendREPLCONF(conn net.Conn, localPort string) error {
 	if err != nil {
 		return err
 	}
+	readResponse(conn)
 	//HARDCODED
 	cmd = []string{"REPLCONF", "capa", "psync2"}
 	_, err = conn.Write([]byte(stringToArray(cmd)))
@@ -43,6 +44,14 @@ func sendREPLCONF(conn net.Conn, localPort string) error {
 
 	return err
 
+}
+func sendPSYNC(conn net.Conn) error {
+	cmd := []string{"PSYNC", "?", "-1"}
+	_, err := conn.Write([]byte(stringToArray(cmd)))
+
+	readResponse(conn)
+
+	return err
 }
 
 func handlePING(conn net.Conn, args []string) error {

@@ -117,7 +117,7 @@ func connectToMaster(masterHost string, masterPort string) {
 
 		sendPING(conn)
 		sendREPLCONF(conn, os.Args[2])
-
+		sendPSYNC(conn)
 		err = setUpReplication()
 		if err != nil {
 			fmt.Printf("Failed to set up replication %s", address)
