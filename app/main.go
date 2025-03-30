@@ -26,6 +26,8 @@ func main() {
 	} else {
 		address = "0.0.0.0:6379"
 		dbConfig["role"] = "master"
+		dbConfig["master_replid"] = "8371b4fb1155b71f4a04d3e1bc3e18c4a990aeeb"
+		dbConfig["master_repl_offset"] = "0"
 	}
 	ln, err := net.Listen("tcp", address)
 	if err != nil {
