@@ -9,7 +9,7 @@ import (
 	"strings"
 )
 
-var counter = NewSafeMap()
+var ram = NewSafeMap()
 
 // var config_map = NewSafeMap()
 

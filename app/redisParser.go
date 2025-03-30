@@ -8,7 +8,7 @@ import (
 	"strings"
 )
 
-// Create a dedicated Redis protocol parser
+// redis protocol parser
 type RedisParser struct {
 	reader *bufio.Reader
 }
@@ -84,4 +84,14 @@ func stringToBulkString(value string) string {
 
 func stringToSimpleString(value string) string {
 	return "+" + value + "\r\n"
+}
+
+func stringToArray(value []string) string {
+	result := "*" + strconv.Itoa(len(value)) + "\r\n"
+
+	for i := 0; i < len(value); i++ {
+		result += stringToBulkString(value[i])
+	}
+
+	return result
 }

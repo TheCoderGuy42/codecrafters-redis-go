@@ -7,7 +7,7 @@ import (
 
 type Entry struct {
 	value string
-	time  time.Time
+	time  int64
 }
 
 type SafeMap struct {
@@ -21,7 +21,7 @@ func NewSafeMap() *SafeMap {
 	}
 }
 
-func (s *SafeMap) Set(key string, value string, expiry time.Time) {
+func (s *SafeMap) Set(key string, value string, expiry int64) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	s.m[key] = Entry{value: value, time: expiry}
@@ -35,12 +35,11 @@ func (s *SafeMap) Get(key string) (string, bool) {
 		return "", false
 	}
 
-	if !time.Time.IsZero(entry.time) && entry.time.Before(time.Now()) {
+	if entry.time != 0 && entry.time < time.Now().UnixMilli() {
 		s.mu.Lock()
 		delete(s.m, key)
 		s.mu.Unlock()
 		return "", false
-
 	}
 	return entry.value, true
 
