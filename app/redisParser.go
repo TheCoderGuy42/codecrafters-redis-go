@@ -19,7 +19,7 @@ func NewRedisParser(r io.Reader) *RedisParser {
 	}
 }
 
-func (p *RedisParser) ReadCommand() ([]string, error) {
+func (p *RedisParser) readArray() ([]string, error) {
 	firstByte, err := p.reader.ReadByte()
 	if err != nil {
 		return nil, err
@@ -58,9 +58,35 @@ func (p *RedisParser) readBulkString() (string, error) {
 		return "", err
 	}
 	if typeByte != '$' {
-		return "", fmt.Errorf("-expected array, got %c", typeByte)
+		return "", fmt.Errorf("-expected bulk string modifier, got %c", typeByte)
 	}
 	lengthStr, err := p.reader.ReadString('\n')
+	if err != nil {
+		return "", err
+	}
+	length, err := strconv.Atoi(strings.TrimSpace(lengthStr))
+	if err != nil {
+		return "", fmt.Errorf("invalid bulk string length: %s", lengthStr)
+	}
+
+	data := make([]byte, length+2)
+	_, err = io.ReadFull(p.reader, data)
+	if err != nil {
+		return "", err
+	}
+	return string(data[:length]), nil
+
+}
+
+func (p *RedisParser) readSimpleString() (string, error) {
+	typeByte, err := p.reader.ReadByte()
+	if err != nil {
+		return "", err
+	}
+	if typeByte != '+' {
+		return "", fmt.Errorf("-expected simple string, got %c", typeByte)
+	}
+	lengthStr, err := p.reader.ReadString('\r')
 	if err != nil {
 		return "", err
 	}

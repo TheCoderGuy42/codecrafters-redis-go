@@ -69,7 +69,7 @@ func handleReq(conn net.Conn) {
 
 	for {
 		// Constraits: arguments cannot be longer than 2048 bytes
-		cmdArgs, err := parser.ReadCommand()
+		cmdArgs, err := parser.readArray()
 		if err != nil {
 			if err != io.EOF {
 				log.Printf("Error reading command: %v", err)
@@ -120,6 +120,9 @@ func connectToMaster(masterHost string, masterPort string) {
 		var buf bytes.Buffer
 		io.Copy(&buf, conn)
 		fmt.Printf("%s", buf.String())
+		if buf.String() != "+PONG" {
+			fmt.Printf("not a valid cmd from master")
+		}
 		sendREPLCONF(conn, os.Args[2])
 
 		err = setUpReplication()
