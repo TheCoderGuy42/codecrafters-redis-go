@@ -9,9 +9,22 @@ import (
 	"time"
 )
 
+func readResponse(conn net.Conn) ([]byte, error) {
+	buffer := make([]byte, 1024)
+	n, err := conn.Read(buffer)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read response: %w", err)
+	}
+	return buffer[:n], nil
+}
+
 func sendPING(conn net.Conn) error {
 	cmd := []string{"PING"}
 	_, err := conn.Write([]byte(stringToArray(cmd)))
+	if err != nil {
+		return err
+	}
+	readResponse(conn)
 	return err
 }
 
@@ -25,7 +38,11 @@ func sendREPLCONF(conn net.Conn, localPort string) error {
 	//HARDCODED
 	cmd = []string{"REPLCONF", "capa", "psync2"}
 	_, err = conn.Write([]byte(stringToArray(cmd)))
+
+	readResponse(conn)
+
 	return err
+
 }
 
 func handlePING(conn net.Conn, args []string) error {
