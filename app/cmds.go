@@ -102,3 +102,16 @@ func handleKEY(conn net.Conn, args []string) error {
 	}
 	return nil
 }
+func handleINFO(conn net.Conn, args []string) error {
+	print(dbConfig["role"])
+	_, err := conn.Write([]byte(stringToBulkString(getDbConfig())))
+	return (err)
+}
+
+func getDbConfig() string {
+	ret := ""
+	for k, v := range dbConfig {
+		ret += k + ":" + v
+	}
+	return ret
+}

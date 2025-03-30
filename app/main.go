@@ -10,8 +10,7 @@ import (
 )
 
 var ram = NewSafeMap()
-
-// var config_map = NewSafeMap()
+var dbConfig = make(map[string]string)
 
 func main() {
 	// You can use print statements as follows for debugging, they'll be visible when running tests.
@@ -22,6 +21,7 @@ func main() {
 		address = "0.0.0.0:" + os.Args[2]
 	} else {
 		address = "0.0.0.0:6379"
+		dbConfig["role"] = "master"
 	}
 	ln, err := net.Listen("tcp", address)
 	if err != nil {
