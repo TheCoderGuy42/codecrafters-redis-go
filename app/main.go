@@ -17,8 +17,12 @@ func main() {
 	fmt.Println("Logs from your program will appear here!")
 	var address string
 
-	if len(os.Args) > 2 && os.Args[1] == "--port" {
+	if len(os.Args) > 4 && os.Args[1] == "--port" && os.Args[3] == "--replicaof" {
 		address = "0.0.0.0:" + os.Args[2]
+		dbConfig["role"] = "slave"
+	} else if len(os.Args) > 2 && os.Args[1] == "--port" {
+		address = "0.0.0.0:" + os.Args[2]
+		dbConfig["role"] = "slave"
 	} else {
 		address = "0.0.0.0:6379"
 		dbConfig["role"] = "master"
