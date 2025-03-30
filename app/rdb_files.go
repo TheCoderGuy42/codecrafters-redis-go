@@ -9,6 +9,15 @@ import (
 	"strconv"
 )
 
+const (
+	EOF          = 0xFF //End of the RDB file
+	SELECTDB     = 0xFE //Database Selector
+	EXPIRETIME   = 0xFD //Expire time in seconds, see Key Expiry Timestamp
+	EXPIRETIMEMS = 0xFC //	Expire time in milliseconds, see Key Expiry Timestamp
+	RESIZEDB     = 0xFB //	Hash table sizes for the main keyspace and expires, see Resizedb information
+	AUX          = 0xFA //	Auxiliary fields. Arbitrary key-value settings, see Auxiliary fields
+)
+
 func loadRdbFile(args []string, fileName string) ([]string, error) {
 	fi, err := os.Open(fileName)
 	if err != nil {
@@ -46,7 +55,7 @@ func loadRdbFile(args []string, fileName string) ([]string, error) {
 		} else if typeByte == 0xFE {
 			reader.UnreadByte()
 			break
-		} else if typeByte == 0xFF {
+		} else if typeByte == EOF {
 			return nil, err
 		}
 
@@ -63,7 +72,7 @@ func loadRdbFile(args []string, fileName string) ([]string, error) {
 			return nil, err
 		}
 
-		if sectionMarker == 0xFF {
+		if sectionMarker == EOF {
 			// End of file marker
 			checksum := make([]byte, 8)
 			_, err = io.ReadFull(reader, checksum)
@@ -110,7 +119,7 @@ func loadRdbFile(args []string, fileName string) ([]string, error) {
 			}
 
 			// section markers
-			if typeByte == 0xFE || typeByte == 0xFF {
+			if typeByte == 0xFE || typeByte == EOF {
 				reader.UnreadByte() // Put back for the outer loop to handle
 				break
 			}
