@@ -16,12 +16,19 @@ var ram = NewSafeMap()
 func main() {
 	// You can use print statements as follows for debugging, they'll be visible when running tests.
 	fmt.Println("Logs from your program will appear here!")
-	ln, err := net.Listen("tcp", "0.0.0.0:6379")
-	if err != nil {
-		fmt.Println("Failed to bind to port 6379")
-		os.Exit(1)
+	var address string
 
+	if len(os.Args) > 2 && os.Args[1] == "--port" {
+		address = "0.0.0.0:" + os.Args[2]
+	} else {
+		address = "0.0.0.0:6379"
 	}
+	ln, err := net.Listen("tcp", address)
+	if err != nil {
+		fmt.Printf("Failed to bind to %s\n", address)
+		os.Exit(1)
+	}
+	defer ln.Close()
 
 	for {
 		conn, err := ln.Accept()

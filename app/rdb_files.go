@@ -40,7 +40,7 @@ func loadRdbFile(args []string, fileName string) ([]string, error) {
 		if err != nil {
 			return nil, err
 		}
-		if typeByte == 0xFA {
+		if typeByte == AUX {
 			//metadata name
 			_, err = readStringEncoding(reader)
 			if err != nil {
@@ -52,7 +52,7 @@ func loadRdbFile(args []string, fileName string) ([]string, error) {
 				return nil, err
 			}
 
-		} else if typeByte == 0xFE {
+		} else if typeByte == SELECTDB {
 			reader.UnreadByte()
 			break
 		} else if typeByte == EOF {
@@ -82,7 +82,7 @@ func loadRdbFile(args []string, fileName string) ([]string, error) {
 			break
 		}
 
-		if sectionMarker != 0xFE {
+		if sectionMarker != SELECTDB {
 			return nil, fmt.Errorf("expected database marker 0xFE, got: %x", sectionMarker)
 		}
 
@@ -97,7 +97,7 @@ func loadRdbFile(args []string, fileName string) ([]string, error) {
 		if err != nil {
 			return nil, err
 		}
-		if nextByte != 0xFB {
+		if nextByte != RESIZEDB {
 			return nil, fmt.Errorf("hash table size marker is wrong, got: %x", nextByte)
 		}
 		// hash table sizes
@@ -119,13 +119,13 @@ func loadRdbFile(args []string, fileName string) ([]string, error) {
 			}
 
 			// section markers
-			if typeByte == 0xFE || typeByte == EOF {
+			if typeByte == SELECTDB || typeByte == EOF {
 				reader.UnreadByte() // Put back for the outer loop to handle
 				break
 			}
 
 			// expiry markers
-			if typeByte == 0xFC {
+			if typeByte == EXPIRETIMEMS {
 				// Millisecond expiry
 				milliseconds := make([]byte, 8)
 				if _, err := io.ReadFull(reader, milliseconds); err != nil {
@@ -138,7 +138,7 @@ func loadRdbFile(args []string, fileName string) ([]string, error) {
 				if err != nil {
 					return nil, err
 				}
-			} else if typeByte == 0xFD {
+			} else if typeByte == EXPIRETIME {
 				// Second expiry
 				seconds := make([]byte, 4)
 				if _, err := io.ReadFull(reader, seconds); err != nil {
