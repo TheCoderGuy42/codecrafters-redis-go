@@ -20,5 +20,6 @@ func init() {
 	RegisterCommand("CONFIG", handleCONFIG)
 	RegisterCommand("KEYS", handleKEY)
 	RegisterCommand("INFO", handleINFO)
+	RegisterCommand("REPLCONF", handleREPLCONF)
 	// Add more commands here as needed
 }

@@ -153,6 +153,11 @@ func handleINFO(conn net.Conn, args []string) error {
 	return (err)
 }
 
+func handleREPLCONF(conn net.Conn, args []string) error {
+	_, err := conn.Write([]byte(stringToSimpleString("OK")))
+	return err
+}
+
 func getDbConfig() string {
 	ret := ""
 	for k, v := range dbConfig {
