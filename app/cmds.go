@@ -157,6 +157,10 @@ func handleREPLCONF(conn net.Conn, args []string) error {
 	_, err := conn.Write([]byte(stringToSimpleString("OK")))
 	return err
 }
+func handlePSYNC(conn net.Conn, args []string) error {
+	_, err := conn.Write([]byte("+FULLRESYNC 8371b4fb1155b71f4a04d3e1bc3e18c4a990aeeb 0\r\n"))
+	return err
+}
 
 func getDbConfig() string {
 	ret := ""

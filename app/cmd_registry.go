@@ -21,5 +21,6 @@ func init() {
 	RegisterCommand("KEYS", handleKEY)
 	RegisterCommand("INFO", handleINFO)
 	RegisterCommand("REPLCONF", handleREPLCONF)
+	RegisterCommand("PSYNC", handlePSYNC)
 	// Add more commands here as needed
 }

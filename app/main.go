@@ -64,11 +64,9 @@ func main() {
 func handleReq(conn net.Conn) {
 	defer conn.Close()
 
-	parser := NewRedisParser(conn)
-
 	for {
 		// Constraits: arguments cannot be longer than 2048 bytes
-		cmdArgs, err := parser.readArray()
+		cmdArgs, err := readCommands(conn)
 		if err != nil {
 			if err != io.EOF {
 				log.Printf("Error reading command: %v", err)
