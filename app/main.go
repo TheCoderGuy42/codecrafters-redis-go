@@ -16,10 +16,10 @@ var dbConfig = make(map[string]string)
 func main() {
 	// You can use print statements as follows for debugging, they'll be visible when running tests.
 	fmt.Println("Logs from your program will appear here!")
-	var address string
+	var listeningAddress string
 
 	if len(os.Args) > 4 && os.Args[1] == "--port" && os.Args[3] == "--replicaof" {
-		address = "0.0.0.0:" + os.Args[2]
+		listeningAddress = "0.0.0.0:" + os.Args[2]
 
 		masterInfo := strings.Split(os.Args[4], " ")
 
@@ -31,18 +31,22 @@ func main() {
 		go connectToMaster(masterHost, masterPort)
 
 	} else if len(os.Args) > 2 && os.Args[1] == "--port" {
-		address = "0.0.0.0:" + os.Args[2]
+		listeningAddress = "0.0.0.0:" + os.Args[2]
+
 		dbConfig["role"] = "master"
+
 	} else {
-		address = "0.0.0.0:6379"
+		listeningAddress = "0.0.0.0:6379"
+
 		dbConfig["role"] = "master"
+		//HARDCODED
 		dbConfig["master_replid"] = "8371b4fb1155b71f4a04d3e1bc3e18c4a990aeeb"
 		dbConfig["master_repl_offset"] = "0"
 	}
 
-	ln, err := net.Listen("tcp", address)
+	ln, err := net.Listen("tcp", listeningAddress)
 	if err != nil {
-		fmt.Printf("Failed to bind to %s\n", address)
+		fmt.Printf("Failed to bind to %s\n", listeningAddress)
 		os.Exit(1)
 	}
 	defer ln.Close()
@@ -101,7 +105,6 @@ func handleReq(conn net.Conn) {
 
 func connectToMaster(masterHost string, masterPort string) {
 	for {
-
 		address := masterHost + ":" + masterPort
 		conn, err := net.Dial("tcp", address)
 		if err != nil {
@@ -112,7 +115,8 @@ func connectToMaster(masterHost string, masterPort string) {
 
 		fmt.Printf("Connected to master at %s ", address)
 
-		sendPING(conn, os.Args)
+		sendPING(conn)
+		sendREPLCONF(conn, os.Args[2])
 
 		err = setUpReplication()
 		if err != nil {

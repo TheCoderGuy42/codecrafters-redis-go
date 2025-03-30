@@ -9,9 +9,22 @@ import (
 	"time"
 )
 
-func sendPING(conn net.Conn, args []string) error {
-	fmt.Printf("String sent %s", stringToArray([]string{"PING"}))
-	_, err := conn.Write([]byte(stringToArray([]string{"PING"})))
+func sendPING(conn net.Conn) error {
+	cmd := []string{"PING"}
+	_, err := conn.Write([]byte(stringToArray(cmd)))
+	return err
+}
+
+func sendREPLCONF(conn net.Conn, localPort string) error {
+	// since os
+	cmd := []string{"REPLCONF", "listening-port", localPort}
+	_, err := conn.Write([]byte(stringToArray(cmd)))
+	if err != nil {
+		return err
+	}
+	//HARDCODED
+	cmd = []string{"REPLCONF", "capa", "psync2"}
+	_, err = conn.Write([]byte(stringToArray(cmd)))
 	return err
 }
 
