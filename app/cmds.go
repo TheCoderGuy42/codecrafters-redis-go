@@ -9,6 +9,12 @@ import (
 	"time"
 )
 
+func sendPING(conn net.Conn, args []string) error {
+	fmt.Printf("String sent %s", stringToArray([]string{"PING"}))
+	_, err := conn.Write([]byte(stringToArray([]string{"PING"})))
+	return err
+}
+
 func handlePING(conn net.Conn, args []string) error {
 	_, err := conn.Write([]byte(stringToSimpleString("PONG")))
 	return err

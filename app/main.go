@@ -7,6 +7,7 @@ import (
 	"net"
 	"os"
 	"strings"
+	"time"
 )
 
 var ram = NewSafeMap()
@@ -19,23 +20,33 @@ func main() {
 
 	if len(os.Args) > 4 && os.Args[1] == "--port" && os.Args[3] == "--replicaof" {
 		address = "0.0.0.0:" + os.Args[2]
+
+		masterInfo := strings.Split(os.Args[4], " ")
+
 		dbConfig["role"] = "slave"
+
+		masterHost := masterInfo[0]
+		masterPort := masterInfo[1]
+
+		go connectToMaster(masterHost, masterPort)
+
 	} else if len(os.Args) > 2 && os.Args[1] == "--port" {
 		address = "0.0.0.0:" + os.Args[2]
-		dbConfig["role"] = "slave"
+		dbConfig["role"] = "master"
 	} else {
 		address = "0.0.0.0:6379"
 		dbConfig["role"] = "master"
 		dbConfig["master_replid"] = "8371b4fb1155b71f4a04d3e1bc3e18c4a990aeeb"
 		dbConfig["master_repl_offset"] = "0"
 	}
+
 	ln, err := net.Listen("tcp", address)
 	if err != nil {
 		fmt.Printf("Failed to bind to %s\n", address)
 		os.Exit(1)
 	}
 	defer ln.Close()
-
+	//handle client command
 	for {
 		conn, err := ln.Accept()
 		if err != nil {
@@ -86,4 +97,47 @@ func handleReq(conn net.Conn) {
 			return
 		}
 	}
+}
+
+func connectToMaster(masterHost string, masterPort string) {
+	for {
+
+		address := masterHost + ":" + masterPort
+		conn, err := net.Dial("tcp", address)
+		if err != nil {
+			fmt.Printf("Failed to bind to %s\n, retrying", address)
+			time.Sleep(5 * time.Second)
+			continue
+		}
+
+		fmt.Printf("Connected to master at %s ", address)
+
+		sendPING(conn, os.Args)
+
+		err = setUpReplication()
+		if err != nil {
+			fmt.Printf("Failed to set up replication %s", address)
+			time.Sleep(5 * time.Second)
+			continue
+		}
+
+		err = processReplicationStream(conn)
+		if err != nil {
+			fmt.Printf("Failed to set up replication %s", address)
+			time.Sleep(5 * time.Second)
+			continue
+		}
+		conn.Close()
+		// Wait before reconnecting
+		time.Sleep(time.Second * 5)
+	}
+
+}
+
+func processReplicationStream(conn net.Conn) error {
+	return nil
+}
+
+func setUpReplication() error {
+	return nil
 }
