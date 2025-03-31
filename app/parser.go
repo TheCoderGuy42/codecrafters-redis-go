@@ -9,7 +9,7 @@ import (
 
 func readCommands(conn net.Conn) ([]string, error) {
 	//Constraint, command can't be longer than 1024
-	buffer := make([]byte, 1024)
+	buffer := make([]byte, 4092)
 	n, err := conn.Read(buffer)
 	if err != nil {
 		return nil, fmt.Errorf("failed to read command: %w", err)

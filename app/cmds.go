@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/base64"
 	"fmt"
 	"net"
 	"os"
@@ -48,9 +49,12 @@ func sendREPLCONF(conn net.Conn, localPort string) error {
 func sendPSYNC(conn net.Conn) error {
 	cmd := []string{"PSYNC", "?", "-1"}
 	_, err := conn.Write([]byte(stringToArray(cmd)))
-
+	if err != nil {
+		return err
+	}
+	// HARDCODED
+	// this is the empty file
 	readResponse(conn)
-
 	return err
 }
 
@@ -159,6 +163,28 @@ func handleREPLCONF(conn net.Conn, args []string) error {
 }
 func handlePSYNC(conn net.Conn, args []string) error {
 	_, err := conn.Write([]byte("+FULLRESYNC 8371b4fb1155b71f4a04d3e1bc3e18c4a990aeeb 0\r\n"))
+	if err != nil {
+		return nil
+	}
+
+	emptyRDBBase64 := "UkVESVMwMDEx+glyZWRpcy12ZXIFNy4yLjD6CnJlZGlzLWJpdHPAQPoFY3RpbWXCbQi8ZfoIdXNlZC1tZW3CsMQQAPoIYW9mLWJhc2XAAP/wbjv+wP9aog=="
+	emptyRDB, err := base64.StdEncoding.DecodeString(emptyRDBBase64)
+	if err != nil {
+		return fmt.Errorf("failed to decode RDB data: %w", err)
+	}
+
+	// Send the RDB file header (length)
+	rdbHeader := fmt.Sprintf("$%d\r\n", len(emptyRDB))
+	_, err = conn.Write([]byte(rdbHeader))
+	if err != nil {
+		return err
+	}
+
+	// Send the RDB file content (without any additional \r\n)
+	_, err = conn.Write(emptyRDB)
+	if err != nil {
+		return err
+	}
 	return err
 }
 
