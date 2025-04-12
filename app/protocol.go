@@ -7,7 +7,13 @@ import (
 	"strconv"
 )
 
-func readCommands(conn net.Conn) ([]string, error) {
+type ProtocolHandler struct{}
+
+func NewProtocolHandler() *ProtocolHandler {
+	return &ProtocolHandler{}
+}
+
+func (p *ProtocolHandler) readCommands(conn net.Conn) ([]string, error) {
 	//Constraint, command can't be longer than 1024
 	buffer := make([]byte, 4092)
 	n, err := conn.Read(buffer)
@@ -15,7 +21,7 @@ func readCommands(conn net.Conn) ([]string, error) {
 		return nil, fmt.Errorf("failed to read command: %w", err)
 	}
 
-	command, err := parseArray(buffer[:n])
+	command, err := p.parseArray(buffer[:n])
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse command: %w", err)
 	}
@@ -24,7 +30,7 @@ func readCommands(conn net.Conn) ([]string, error) {
 }
 
 // redis protocol parser
-func parseArray(data []byte) ([]string, error) {
+func (p *ProtocolHandler) parseArray(data []byte) ([]string, error) {
 	if len(data) == 0 || data[0] != '*' {
 		return nil, fmt.Errorf("expected array, got %x", data[0])
 	}
@@ -40,7 +46,7 @@ func parseArray(data []byte) ([]string, error) {
 	result := make([]string, length)
 
 	for i := 0; i < length; i++ {
-		element, bytesRead, err := parseBulkString(data[pos:])
+		element, bytesRead, err := p.parseBulkString(data[pos:])
 		if err != nil {
 			return nil, err
 		}
@@ -51,7 +57,7 @@ func parseArray(data []byte) ([]string, error) {
 	return result, nil
 }
 
-func parseBulkString(data []byte) (string, int, error) {
+func (p *ProtocolHandler) parseBulkString(data []byte) (string, int, error) {
 	if len(data) == 0 || data[0] != '$' {
 		return "", 0, fmt.Errorf("expected bulk string modifier, got %c", data[0])
 	}
@@ -79,7 +85,7 @@ func parseBulkString(data []byte) (string, int, error) {
 	return result, endPos, nil
 }
 
-func parseSimpleString(data []byte) (string, int, error) {
+func (p *ProtocolHandler) parseSimpleString(data []byte) (string, int, error) {
 	if len(data) == 0 || data[0] != '+' {
 		return "", 0, fmt.Errorf("expected simple string, got %c", data[0])
 	}
@@ -93,19 +99,19 @@ func parseSimpleString(data []byte) (string, int, error) {
 	return result, idx + 1, nil
 }
 
-func stringToBulkString(value string) string {
+func (p *ProtocolHandler) stringToBulkString(value string) string {
 	return "$" + strconv.Itoa(len(value)) + "\r\n" + value + "\r\n"
 }
 
-func stringToSimpleString(value string) string {
+func (p *ProtocolHandler) stringToSimpleString(value string) string {
 	return "+" + value + "\r\n"
 }
 
-func stringToArray(value []string) string {
+func (p *ProtocolHandler) stringToArray(value []string) string {
 	result := "*" + strconv.Itoa(len(value)) + "\r\n"
 
 	for i := 0; i < len(value); i++ {
-		result += stringToBulkString(value[i])
+		result += p.stringToBulkString(value[i])
 	}
 
 	return result

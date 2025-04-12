@@ -18,7 +18,17 @@ const (
 	AUX          = 0xFA //	Auxiliary fields. Arbitrary key-value settings, see Auxiliary fields
 )
 
-func loadRdbFile(args []string, fileName string) ([]string, error) {
+type RDBHandler struct {
+	ram *SafeMap
+}
+
+func NewRDBHandler(ram *SafeMap) *RDBHandler {
+	return &RDBHandler{
+		ram: ram,
+	}
+}
+
+func (r *RDBHandler) loadRdbFile(args []string, fileName string) ([]string, error) {
 	fi, err := os.Open(fileName)
 	if err != nil {
 		return nil, err
@@ -42,12 +52,12 @@ func loadRdbFile(args []string, fileName string) ([]string, error) {
 		}
 		if typeByte == AUX {
 			//metadata name
-			_, err = readStringEncoding(reader)
+			_, err = r.readStringEncoding(reader)
 			if err != nil {
 				return nil, err
 			}
 			//metadata value
-			_, err = readStringEncoding(reader)
+			_, err = r.readStringEncoding(reader)
 			if err != nil {
 				return nil, err
 			}
@@ -88,7 +98,7 @@ func loadRdbFile(args []string, fileName string) ([]string, error) {
 
 		// first 3 fields index hashTableSize keyExpires
 		// index of the database
-		_, err = readSizeEncoding(reader)
+		_, err = r.readSizeEncoding(reader)
 		if err != nil {
 			return nil, err
 		}
@@ -101,10 +111,10 @@ func loadRdbFile(args []string, fileName string) ([]string, error) {
 			return nil, fmt.Errorf("hash table size marker is wrong, got: %x", nextByte)
 		}
 		// hash table sizes
-		if _, err := readSizeEncoding(reader); err != nil {
+		if _, err := r.readSizeEncoding(reader); err != nil {
 			return nil, err
 		}
-		if _, err := readSizeEncoding(reader); err != nil {
+		if _, err := r.readSizeEncoding(reader); err != nil {
 			return nil, err
 		}
 		for {
@@ -154,17 +164,19 @@ func loadRdbFile(args []string, fileName string) ([]string, error) {
 
 			// Handle string value
 			if typeByte == 0x00 {
-				key, err := readStringEncoding(reader)
+				key, err := r.readStringEncoding(reader)
 				if err != nil {
 					return nil, err
 				}
 
 				// Read the value
-				value, err := readStringEncoding(reader)
+				value, err := r.readStringEncoding(reader)
 				if err != nil {
 					return nil, err
 				}
-				ram.Set(key, value, expiry)
+
+				r.ram.Set(key, value, expiry)
+
 				keys_added = append(keys_added, key)
 			} else {
 				return nil, fmt.Errorf("unsupported value type: %x", typeByte)
@@ -174,7 +186,7 @@ func loadRdbFile(args []string, fileName string) ([]string, error) {
 	return keys_added, nil
 }
 
-func readSizeEncoding(reader *bufio.Reader) (uint64, error) {
+func (r *RDBHandler) readSizeEncoding(reader *bufio.Reader) (uint64, error) {
 	fullByte, err := reader.ReadByte()
 	if err != nil {
 		return 0, err
@@ -233,7 +245,7 @@ func readSizeEncoding(reader *bufio.Reader) (uint64, error) {
 	}
 }
 
-func readStringEncoding(reader *bufio.Reader) (string, error) {
+func (r *RDBHandler) readStringEncoding(reader *bufio.Reader) (string, error) {
 	firstByte, err := reader.ReadByte()
 	if err != nil {
 		return "", err
@@ -247,7 +259,7 @@ func readStringEncoding(reader *bufio.Reader) (string, error) {
 	// If this is a special encoding (first two bits are 11)
 	if (firstByte >> 6) == 3 {
 		fmt.Println("Special encoding for string detected")
-		value, err := readSizeEncoding(reader)
+		value, err := r.readSizeEncoding(reader)
 		if err != nil {
 			return "", err
 		}
@@ -255,7 +267,7 @@ func readStringEncoding(reader *bufio.Reader) (string, error) {
 	}
 
 	// Otherwise, it's a normal string
-	length, err := readSizeEncoding(reader)
+	length, err := r.readSizeEncoding(reader)
 	if err != nil {
 		return "", err
 	}
