@@ -3,11 +3,8 @@ package main
 import (
 	"fmt"
 	"io"
-	"log"
 	"net"
 	"os"
-	"path/filepath"
-	"strconv"
 	"time"
 )
 
@@ -87,73 +84,6 @@ func (r *RedisServer) processReplicationStream(conn net.Conn) error {
 		}
 
 	}
-}
-
-func (h *RedisServer) handleReplicaSET(conn net.Conn, args []string) error {
-	key := args[0]
-	value := args[1]
-	var expiry int64
-	var expire_time int
-
-	if len(args) > 2 {
-		expire_time, _ = strconv.Atoi(args[3])
-	}
-
-	if expire_time != 0 {
-		milli := time.Now().UnixMilli()
-		expiry = milli + int64(expire_time)
-	}
-
-	h.ram.Set(key, value, expiry)
-
-	return nil
-
-}
-
-func (s *RedisServer) handleReplicaGET(conn net.Conn, args []string) error {
-	if len(args) != 1 {
-		_, err := conn.Write([]byte("-ERR wrong number of arguments for 'get' command\r\n"))
-		return err
-	}
-
-	if s.config.Dir != "" && s.config.DBFilename != "" {
-		fileName := filepath.Join(s.config.Dir, s.config.DBFilename)
-		_, err := s.rdb.loadRdbFile(fileName)
-		if err != nil {
-			return err
-		}
-	}
-
-	key := args[0]
-	value, exists := s.ram.Get(key)
-	if !exists {
-		_, err := conn.Write([]byte("$-1\r\n"))
-		return err
-	} else {
-		_, err := conn.Write([]byte(s.protocol.stringToBulkString(value)))
-		return err
-	}
-}
-
-func (h *RedisServer) ExecuteReplicaCmd(conn net.Conn, cmd string, args []string) error {
-	var fn CommandFunc
-	switch cmd {
-	case "SET":
-		fn = h.handleReplicaSET
-	case "GET":
-		fn = h.handleReplicaGET
-
-	default:
-		{
-			log.Printf("Unknown command: %s", cmd)
-			_, cmdErr := conn.Write([]byte("-ERR unknown command\r\n"))
-			if cmdErr != nil {
-				return fmt.Errorf("error handling command %s: %v", cmd, cmdErr)
-			}
-		}
-	}
-
-	return fn(conn, args)
 }
 
 func (r *RedisServer) readResponse(conn net.Conn) ([]byte, error) {
