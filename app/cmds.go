@@ -79,27 +79,27 @@ func (h *RedisServer) handleSET(conn net.Conn, args []string) error {
 	return err
 }
 
-func (h *RedisServer) handleGET(conn net.Conn, args []string) error {
+func (s *RedisServer) handleGET(conn net.Conn, args []string) error {
 	if len(args) != 1 {
 		_, err := conn.Write([]byte("-ERR wrong number of arguments for 'get' command\r\n"))
 		return err
 	}
 
-	if len(os.Args) >= 5 {
-		fileName := filepath.Join(os.Args[2], os.Args[4])
-		_, err := h.rdb.loadRdbFile(args, fileName)
+	if s.config.Dir != "" && s.config.DBFilename != "" {
+		fileName := filepath.Join(s.config.Dir, s.config.DBFilename)
+		_, err := s.rdb.loadRdbFile(fileName)
 		if err != nil {
 			return err
 		}
 	}
 
 	key := args[0]
-	value, exists := h.ram.Get(key)
+	value, exists := s.ram.Get(key)
 	if !exists {
 		_, err := conn.Write([]byte("$-1\r\n"))
 		return err
 	} else {
-		_, err := conn.Write([]byte(h.protocol.stringToBulkString(value)))
+		_, err := conn.Write([]byte(s.protocol.stringToBulkString(value)))
 		return err
 	}
 }
@@ -134,16 +134,24 @@ func (h *RedisServer) handleCONFIG(conn net.Conn, args []string) error {
 	return nil
 }
 
-func (h *RedisServer) handleKEY(conn net.Conn, args []string) error {
+func (s *RedisServer) handleKEY(conn net.Conn, args []string) error {
 	if len(os.Args) < 5 {
 		return fmt.Errorf("insufficient arguments, need dir and dbfilename")
 	}
-	fileName := filepath.Join(os.Args[2], os.Args[4])
-	keys_added, err := h.rdb.loadRdbFile(args, fileName)
+
+	if s.config.Dir == "" && s.config.DBFilename == "" {
+		fmt.Errorf("there needs to be a dir and dbfilename")
+	}
+
+	fileName := filepath.Join(s.config.Dir, s.config.DBFilename)
+
+	keys_added, err := s.rdb.loadRdbFile(fileName)
+
 	if err != nil {
 		return err
 	}
-	_, err = conn.Write([]byte(h.protocol.stringToArray(keys_added)))
+
+	_, err = conn.Write([]byte(s.protocol.stringToArray(keys_added)))
 	if err != nil {
 		return err
 	}

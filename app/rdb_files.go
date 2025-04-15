@@ -2,7 +2,6 @@ package main
 
 import (
 	"bufio"
-	"encoding/binary"
 	"fmt"
 	"io"
 	"os"
@@ -28,7 +27,7 @@ func NewRDBHandler(ram *SafeMap) *RDBHandler {
 	}
 }
 
-func (r *RDBHandler) loadRdbFile(args []string, fileName string) ([]string, error) {
+func (r *RDBHandler) loadRdbFile(fileName string) ([]string, error) {
 	fi, err := os.Open(fileName)
 	if err != nil {
 		return nil, err
@@ -279,13 +278,4 @@ func (r *RDBHandler) readStringEncoding(reader *bufio.Reader) (string, error) {
 	}
 
 	return string(buf), nil
-}
-
-func bytesToInt64LE(b []byte) int64 {
-	return int64(binary.LittleEndian.Uint64(b))
-}
-
-// For big-endian
-func bytesToInt64BE(b []byte) int64 {
-	return int64(binary.BigEndian.Uint64(b))
 }

@@ -54,5 +54,6 @@ func parseArgs(args []string) *Config {
 			config.Dir = args[i]
 		}
 	}
+
 	return &config
 }

@@ -15,7 +15,6 @@ type RedisServer struct {
 	protocol   *ProtocolHandler
 	ram        *SafeMap
 	rdb        *RDBHandler
-	repl       *ReplicationManager
 	listener   net.Listener
 	clients    map[string]*Client
 	replica    map[string]net.Conn
@@ -32,20 +31,19 @@ func NewRedisServer(
 	protocol *ProtocolHandler,
 	ram *SafeMap,
 	rdb *RDBHandler,
-	repl *ReplicationManager,
 ) *RedisServer {
 	return &RedisServer{
 		config:   config,
 		protocol: protocol,
 		ram:      ram,
 		rdb:      rdb,
-		repl:     repl,
 		clients:  make(map[string]*Client),
 		replica:  make(map[string]net.Conn),
 	}
 }
 
 func (s *RedisServer) StartServer() {
+
 	ln, err := net.Listen("tcp", s.config.Addr)
 	if err != nil {
 		fmt.Printf("Failed to bind to %s\n", s.config.Addr)
@@ -57,7 +55,7 @@ func (s *RedisServer) StartServer() {
 
 	// the replication manager just handles the replica <-> master communication
 	if s.config.Role == "slave" {
-		go s.repl.startReplication()
+		go s.startReplication()
 	}
 
 	s.acceptClient()
@@ -86,14 +84,6 @@ func (s *RedisServer) acceptClient() {
 			os.Exit(1)
 		}
 
-		clientID := conn.RemoteAddr().String()
-
-		// not a go request so mutating state of client isn't really an issue
-		s.clients[clientID] = &Client{
-			Conn: conn,
-			ID:   clientID,
-		}
-
 		go s.acceptConnection(conn)
 	}
 
@@ -120,15 +110,13 @@ func (s *RedisServer) acceptConnection(conn net.Conn) {
 
 		cmd := strings.ToUpper(cmdArgs[0])
 
-		fmt.Printf("cmd: %v config: %v", cmd, s.config)
-
-		if s.repl.isWrite(cmd) && s.config.Role == "slave" {
+		if isWrite(cmd) && s.config.Role == "slave" {
 			log.Printf("Cannot propagate write cmd to Read only replica")
 		}
 
 		s.ExecuteCmd(conn, cmd, cmdArgs[1:])
 
-		if s.repl.isWrite(cmd) && s.config.Role == "master" {
+		if isWrite(cmd) && s.config.Role == "master" {
 			s.propagateWrite(s.replica, cmdArgs)
 		}
 

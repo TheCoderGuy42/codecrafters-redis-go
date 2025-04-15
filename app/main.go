@@ -13,9 +13,8 @@ func main() {
 	protocol := NewProtocolHandler()
 	ram := NewSafeMap()
 	rdb := NewRDBHandler(ram)
-	repl := NewReplicationManager(config, protocol)
 
-	s := NewRedisServer(config, protocol, ram, rdb, repl)
+	s := NewRedisServer(config, protocol, ram, rdb)
 
 	s.StartServer()
 }

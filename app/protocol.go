@@ -21,7 +21,7 @@ func (p *ProtocolHandler) readCommands(conn net.Conn) ([]string, error) {
 		return nil, fmt.Errorf("failed to read command: %w", err)
 	}
 
-	command, err := p.parseArray(buffer[:n])
+	command, err, _ := p.parseArray(buffer[:n])
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse command: %w", err)
 	}
@@ -29,18 +29,41 @@ func (p *ProtocolHandler) readCommands(conn net.Conn) ([]string, error) {
 	return command, nil
 }
 
+func (p *ProtocolHandler) parseArrays(data []byte) ([][]string, error) {
+	var arrays [][]string
+	var pos int = 0
+
+	for pos < len(data) {
+		idx := bytes.IndexByte(data[pos:], '*')
+		if idx == -1 {
+			break // No more arrays
+		}
+
+		// parse from this position
+		array, err, consumed := p.parseArray(data[pos+idx:])
+		if err != nil {
+			return nil, err
+		}
+
+		arrays = append(arrays, array)
+		pos += idx + consumed
+	}
+
+	return arrays, nil
+}
+
 // redis protocol parser
-func (p *ProtocolHandler) parseArray(data []byte) ([]string, error) {
+func (p *ProtocolHandler) parseArray(data []byte) ([]string, error, int) {
 	if len(data) == 0 || data[0] != '*' {
-		return nil, fmt.Errorf("expected array, got %x", data[0])
+		return nil, fmt.Errorf("expected array, got %x", data[0]), 0
 	}
 	idx := bytes.IndexByte(data, '\n')
 	if idx <= 0 || data[idx-1] != '\r' {
-		return nil, fmt.Errorf("malformed array length")
+		return nil, fmt.Errorf("malformed array length"), 0
 	}
 	length, err := strconv.Atoi(string(data[1 : idx-1]))
 	if err != nil {
-		return nil, fmt.Errorf("invalid array length: %s", string(data[1:idx-1]))
+		return nil, fmt.Errorf("invalid array length: %s", string(data[1:idx-1])), 0
 	}
 	pos := idx + 1
 	result := make([]string, length)
@@ -48,13 +71,13 @@ func (p *ProtocolHandler) parseArray(data []byte) ([]string, error) {
 	for i := 0; i < length; i++ {
 		element, bytesRead, err := p.parseBulkString(data[pos:])
 		if err != nil {
-			return nil, err
+			return nil, err, 0
 		}
 		result[i] = element
 		pos += bytesRead
 	}
 
-	return result, nil
+	return result, nil, pos
 }
 
 func (p *ProtocolHandler) parseBulkString(data []byte) (string, int, error) {
