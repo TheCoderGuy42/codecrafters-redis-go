@@ -127,6 +127,10 @@ func (p *ProtocolHandler) parseSimpleString(data []byte) (string, int, error) {
 	return result, idx + 1, nil
 }
 
+func (p *ProtocolHandler) stringToIntString(value string) string {
+	return ":" + value + "\r\n"
+}
+
 func (p *ProtocolHandler) stringToBulkString(value string) string {
 	return "$" + strconv.Itoa(len(value)) + "\r\n" + value + "\r\n"
 }

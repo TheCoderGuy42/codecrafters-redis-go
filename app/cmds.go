@@ -34,6 +34,8 @@ func (h *RedisServer) ExecuteCmd(conn net.Conn, cmd string, args []string) error
 		fn = h.handleREPLCONF
 	case "PSYNC":
 		fn = h.handlePSYNC
+	case "WAIT":
+		fn = h.handleWAIT
 
 	default:
 		{
@@ -46,6 +48,11 @@ func (h *RedisServer) ExecuteCmd(conn net.Conn, cmd string, args []string) error
 	}
 
 	return fn(conn, args)
+}
+
+func (h *RedisServer) handleWAIT(conn net.Conn, args []string) error {
+	_, err := conn.Write([]byte(h.protocol.stringToIntString("0")))
+	return err
 }
 
 func (h *RedisServer) handlePING(conn net.Conn, args []string) error {
