@@ -29,8 +29,9 @@ func (p *ProtocolHandler) readCommands(conn net.Conn) ([]string, error) {
 	return command, nil
 }
 
-func (p *ProtocolHandler) parseArrays(data []byte) ([][]string, error) {
+func (p *ProtocolHandler) parseArrays(data []byte) ([][]string, []int, error) {
 	var arrays [][]string
+	var array_len []int
 	var pos int = 0
 
 	for pos < len(data) {
@@ -42,14 +43,18 @@ func (p *ProtocolHandler) parseArrays(data []byte) ([][]string, error) {
 		// parse from this position
 		array, err, consumed := p.parseArray(data[pos+idx:])
 		if err != nil {
-			return nil, err
+			return nil, nil, err
 		}
 
 		arrays = append(arrays, array)
+
+		array_len = append(array_len, consumed)
+		fmt.Printf("amount consumed %d", consumed)
+
 		pos += idx + consumed
 	}
 
-	return arrays, nil
+	return arrays, array_len, nil
 }
 
 // redis protocol parser

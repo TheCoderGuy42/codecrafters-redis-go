@@ -6,6 +6,7 @@ import (
 	"net"
 	"path/filepath"
 	"strconv"
+	"strings"
 	"time"
 )
 
@@ -18,6 +19,8 @@ func (h *RedisServer) ExecuteReplicaCmd(conn net.Conn, cmd string, args []string
 		fn = h.handleReplicaGET
 	case "REPLCONF":
 		fn = h.handleReplicaREPLCONF
+	case "PING":
+		fn = h.handleReplicaPING
 
 	default:
 		{
@@ -53,8 +56,23 @@ func (h *RedisServer) handleReplicaSET(conn net.Conn, args []string) error {
 
 }
 
+func (h *RedisServer) handleReplicaPING(conn net.Conn, args []string) error {
+	return nil
+}
+
 func (h *RedisServer) handleReplicaREPLCONF(conn net.Conn, args []string) error {
-	_, err := conn.Write([]byte(h.protocol.stringToArray([]string{"REPLCONF", "ACK", string(int(h.config.MasterReplOffset))})))
+	if len(args) > 0 && strings.ToUpper(args[0]) == "GETACK" {
+		h.config.mu.RLock()
+		processedBytes := h.config.MasterReplOffset
+		h.config.mu.RUnlock()
+
+		// Return ACK with the processed bytes
+		_, err := conn.Write([]byte(h.protocol.stringToArray([]string{"REPLCONF", "ACK", strconv.Itoa(processedBytes)})))
+		return err
+	}
+
+	// Default response for other REPLCONF commands
+	_, err := conn.Write([]byte(h.protocol.stringToSimpleString("OK")))
 	return err
 }
 

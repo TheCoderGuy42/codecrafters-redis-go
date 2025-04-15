@@ -62,7 +62,7 @@ func (r *RedisServer) setUpReplication(conn net.Conn) error {
 func (r *RedisServer) processReplicationStream(conn net.Conn) error {
 	for {
 		cmds_bytes, err := r.readResponse(conn)
-		// fmt.Printf("\n Cmd_bytes: %s  Length %d \n", string(cmds_bytes), len(cmds_bytes))
+		fmt.Printf("\n Cmd_bytes: %s  Length %d \n", string(cmds_bytes), len(cmds_bytes))
 		if err != nil {
 			if err != io.EOF {
 				fmt.Printf("Error reading command: %v", err)
@@ -71,20 +71,24 @@ func (r *RedisServer) processReplicationStream(conn net.Conn) error {
 		}
 
 		//parsing the cmds to bytes so they can be used properly
-		cmds, err := r.protocol.parseArrays(cmds_bytes)
-
-		fmt.Printf("%v", cmds)
+		cmds, lengths, err := r.protocol.parseArrays(cmds_bytes)
+		// fmt.Printf("%v", cmds)
 		if err != nil {
 			return err
 		}
 
+		// process each command
 		for i := 0; i < len(cmds); i++ {
-			r.ExecuteReplicaCmd(conn, cmds[i][0], cmds[i][1:])
-		}
+			cmd := cmds[i][0]
+			args := cmds[i][1:]
 
-		r.config.mu.Lock()
-		r.config.MasterReplOffset += len(cmds_bytes)
-		r.config.mu.Unlock()
+			// execute the command
+			r.ExecuteReplicaCmd(conn, cmd, args)
+
+			r.config.mu.Lock()
+			r.config.MasterReplOffset += lengths[i]
+			r.config.mu.Unlock()
+		}
 
 	}
 }
@@ -150,13 +154,13 @@ func (r *RedisServer) sendPSYNC(conn net.Conn) error {
 func (r *RedisServer) readRDBFile(conn net.Conn) {
 
 	// full resync + rdb file
-	resync, _ := r.readResponseUntil(conn, 56)
+	r.readResponseUntil(conn, 56)
 
-	fmt.Printf("resync: %s, Length %d", string(resync), len(resync))
+	// fmt.Printf("resync: %s, Length %d", string(resync), len(resync))
 
-	rdb, _ := r.readResponseUntil(conn, 93)
+	r.readResponseUntil(conn, 93)
 
-	fmt.Printf("rdb file: %s, Length %d", string(rdb), len(rdb))
+	// fmt.Printf("rdb file: %s, Length %d", string(rdb), len(rdb))
 
 }
 
