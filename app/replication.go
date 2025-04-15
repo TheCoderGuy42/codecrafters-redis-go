@@ -79,9 +79,12 @@ func (r *RedisServer) processReplicationStream(conn net.Conn) error {
 		}
 
 		for i := 0; i < len(cmds); i++ {
-
 			r.ExecuteReplicaCmd(conn, cmds[i][0], cmds[i][1:])
 		}
+
+		r.config.mu.Lock()
+		r.config.MasterReplOffset += len(cmds_bytes)
+		r.config.mu.Unlock()
 
 	}
 }
