@@ -51,7 +51,7 @@ func (h *RedisServer) ExecuteCmd(conn net.Conn, cmd string, args []string) error
 }
 
 func (h *RedisServer) handleWAIT(conn net.Conn, args []string) error {
-	_, err := conn.Write([]byte(h.protocol.stringToIntString("0")))
+	_, err := conn.Write([]byte(h.protocol.intToIntString(len(h.replica))))
 	return err
 }
 
