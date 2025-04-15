@@ -54,7 +54,7 @@ func (h *RedisServer) handleReplicaSET(conn net.Conn, args []string) error {
 }
 
 func (h *RedisServer) handleReplicaREPLCONF(conn net.Conn, args []string) error {
-	_, err := conn.Write([]byte(h.protocol.stringToArray([]string{"REPLCONF", "ACK", string(h.config.MasterReplOffset)})))
+	_, err := conn.Write([]byte(h.protocol.stringToArray([]string{"REPLCONF", "ACK", string(int(h.config.MasterReplOffset))})))
 	return err
 }
 
